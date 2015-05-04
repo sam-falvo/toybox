@@ -43,9 +43,11 @@ variable sfound
 variable skey
 variable svalue
 variable sdone
+create supdate 16 cells allot
 
 
 : ss		slevel @ 0< if sfound off sdone on exit then
+		pn @  supdate slevel @ cells +  !
 		p @ slevel @ cells + nh_ptrs + @ dup qn !
 		qn @ if
 			qn @ sector q !
@@ -54,16 +56,12 @@ variable sdone
 				q @ p !
 				exit
 			then
-			q @ nh_key + @ skey @ = if
-				q @ nh_value + @ svalue !
-				sfound on sdone on
-				exit
-			then
 		then
 		-1 slevel +! ;
 
 : search	0 pn ! 0 sector p !  p @ nh_level + @ slevel !
-		sdone off begin sdone @ 0= while ss repeat ;
+		sdone off begin sdone @ 0= while ss repeat
+		q @ nh_key + @ skey @ = if sfound on  q @ nh_value + @ svalue ! then ;
 
 
 : init		seekCount off 79 prevCyl ! dirty off seekCount off
