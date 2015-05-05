@@ -7,7 +7,7 @@ variable ivalue
 variable p
 variable pn
 variable prevCyl
-create prevSect 8 cells allot
+variable prevSect
 variable q
 variable qn
 variable readCount
