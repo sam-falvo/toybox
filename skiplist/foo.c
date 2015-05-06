@@ -7,8 +7,10 @@ int main(int argc, char *argv[]) {
 		char buf[256];
 		strcpy(buf, "./tmp-file-XXXXXX");
 		h = mkstemp(buf);
+		sync();
 		if(h > 0) {
 			write(h, &h, 1);
+			sync();
 			close(h);
 			sync();
 		}
