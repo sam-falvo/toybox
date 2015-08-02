@@ -113,3 +113,23 @@ obj_draw(Workstation *wk, Object *objects, unsigned short first) {
 		first = o->next;
 	} while(1);
 }
+
+unsigned short
+obj_find(Object *objects, unsigned short start, int mx, int my) {
+	Object *o;
+	int l, t, r, b;
+
+	do {
+		o = &objects[start];
+
+		l = o->left; t = o->top;
+		r = l + o->width; b = t + o->height;
+
+		if((l <= mx) && (mx <= r) && (t <= my) && (my <= b)) return start;
+
+		if(o->next == start) break;
+		start = o->next;
+	} while(1);
+	return 0xFFFF;
+}
+

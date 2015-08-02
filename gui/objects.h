@@ -40,6 +40,7 @@ void obj_draw_rectangle(Workstation *, int, int, int, int, unsigned int);
 void obj_draw_rectframe(Workstation *, int, int, int, int, unsigned int);
 
 void obj_draw(Workstation *, Object *, unsigned short);
+unsigned short obj_find(Object *, unsigned short, int, int);
 
 #endif
 
