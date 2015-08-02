@@ -7,7 +7,7 @@
 int
 main(int argc, char *argv[]) {
 	Workstation *wk;
-	int erc, i;
+	int erc, i, done;
 	static Object objs[] = {
 		{1, 50, 25, 0, 0, OT_WINFRAME, 0},
 		{2, 0, 0, 0, 12, OT_TITLE, "Calc"},
@@ -31,6 +31,7 @@ main(int argc, char *argv[]) {
 
 		{19, 0, 0, 640, 12, OT_LABEL, "Calculator Version 1.0"},
 	};
+	SDL_Event e;
 
 	erc = workstation_open(&wk);
 	if(erc) {
@@ -57,7 +58,11 @@ main(int argc, char *argv[]) {
 
 	obj_draw(wk, objs, 0);
 
-	SDL_Delay(5000);
+	done = 0;
+	while(!done) {
+		SDL_WaitEvent(&e);
+		if(e.type == SDL_QUIT) done++;
+	}
 
 	workstation_close(wk);
 }
