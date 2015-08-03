@@ -7,7 +7,6 @@
 
 struct Workstation {
 	SDL_Window *wBackdrop;
-	SDL_Surface *sBackdrop;
 	SDL_Renderer *rBackdrop;
 
 	int width, height;
@@ -196,12 +195,6 @@ workstation_open(Workstation **pwk) {
 	wk->rBackdrop = SDL_CreateRenderer(wk->wBackdrop, -1, 0);
 	if(!wk->rBackdrop) {
 		erc = 5;
-		goto micdrop;
-	}
-
-	wk->sBackdrop = SDL_GetWindowSurface(wk->wBackdrop);
-	if(!wk->sBackdrop) {
-		erc = 4;
 		goto micdrop;
 	}
 
