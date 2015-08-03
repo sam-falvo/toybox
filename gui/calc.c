@@ -67,6 +67,7 @@ main(int argc, char *argv[]) {
 	objs[1].top -= 13;
 
 	obj_draw(wk, objs, 0);
+  workstation_refresh(wk);
 
 	/* Establish our callbacks. */
 	old_vec_button_down = vec_button_down;

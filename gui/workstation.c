@@ -243,7 +243,6 @@ void
 workstation_hline(Workstation *wk, int l, int r, int y) {
 	SDL_SetRenderDrawColor(wk->rBackdrop, wk->fgr, wk->fgg, wk->fgb, 0xFF);
 	SDL_RenderDrawLine(wk->rBackdrop, l, y, r-1, y);
-	SDL_RenderPresent(wk->rBackdrop);
 }
 
 void
@@ -258,7 +257,6 @@ void
 workstation_vline(Workstation *wk, int x, int t, int b) {
 	SDL_SetRenderDrawColor(wk->rBackdrop, wk->fgr, wk->fgg, wk->fgb, 0xFF);
 	SDL_RenderDrawLine(wk->rBackdrop, x, t, x, b-1);
-	SDL_RenderPresent(wk->rBackdrop);
 }
 
 void
@@ -313,6 +311,11 @@ workstation_char(Workstation *wk, int x, int y, char ch) {
 	t = SDL_CreateTextureFromSurface(wk->rBackdrop, s);
 	SDL_FreeSurface(s);
 	SDL_RenderCopy(wk->rBackdrop, t, NULL, &dr);
-	SDL_RenderPresent(wk->rBackdrop);
 	SDL_DestroyTexture(t);
 }
+
+void
+workstation_refresh(Workstation *wk) {
+  SDL_RenderPresent(wk->rBackdrop);
+}
+

@@ -1,5 +1,3 @@
-// #qo pkg-config: sdl2
-
 #ifndef OBJECTS_H
 #define OBJECTS_H
 

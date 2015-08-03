@@ -1,5 +1,3 @@
-// #qo pkg-config: sdl2
-
 #ifndef EVENTS_H
 #define EVENTS_H
 
