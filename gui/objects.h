@@ -20,6 +20,7 @@ struct Object {
 #define OT_BUTTON	4
 #define OT_RECT		5
 #define OT_RECTFRAME	6
+#define OT_BITMAP	7
 
 /* ptr1 fields are interpreted per object type:
  *
@@ -36,6 +37,7 @@ void obj_draw_label(Workstation *, int, int, int, int, char *);
 void obj_draw_button(Workstation *, int, int, int, int, char *);
 void obj_draw_rectangle(Workstation *, int, int, int, int, unsigned int);
 void obj_draw_rectframe(Workstation *, int, int, int, int, unsigned int);
+void obj_draw_bitmap(Workstation *, int, int, int, int, char *);
 
 void obj_draw(Workstation *, Object *, unsigned short);
 unsigned short obj_find(Object *, unsigned short, int, int);

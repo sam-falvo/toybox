@@ -75,6 +75,11 @@ obj_draw_rectframe(Workstation *wk, int l, int t, int w, int h, unsigned int fgp
 }
 
 void
+obj_draw_bitmap(Workstation *wk, int l, int t, int w, int h, char *bmdata) {
+	workstation_opaqueBitmap(wk, l, t, w, h, bmdata);
+}
+
+void
 obj_draw(Workstation *wk, Object *objects, unsigned short first) {
 	int l, t, w, h;
 	Object *o;
@@ -105,6 +110,9 @@ obj_draw(Workstation *wk, Object *objects, unsigned short first) {
 		case OT_RECTFRAME:
 			obj_draw_rectframe(wk, l, t, w, h, AS_UINT(o->ptr1));
 			break;
+    case OT_BITMAP:
+      obj_draw_bitmap(wk, l, t, w, h, (char *)(o->ptr1));
+      break;
 		default:
 			break;
 		}

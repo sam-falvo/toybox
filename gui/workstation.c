@@ -319,3 +319,42 @@ workstation_refresh(Workstation *wk) {
   SDL_RenderPresent(wk->rBackdrop);
 }
 
+void
+workstation_opaqueBitmap(Workstation *wk, int l, int t, int w, int h, char *bmdata) {
+	int i, x, y;
+	unsigned int *q;
+	SDL_Surface *s;
+	SDL_Texture *tex;
+	SDL_Rect dr;
+	char bd;
+
+	dr.x = l;
+	dr.y = t;
+	dr.w = w;
+	dr.h = h;
+
+	s = SDL_CreateRGBSurface(0, w, h, 32, 0xFF0000, 0xFF00, 0xFF, 0);
+	if(!s) return;
+
+	for(y = 0; y < h; y++) {
+		q = &s->pixels[y * s->pitch];
+		for(x = 0; x < w; x += 8) {
+			bd = *bmdata;
+			for(i = 0; i < 8; i++) {
+				if(bd & 0x80) {
+					*q++ = 0x000000;
+				} else {
+					*q++ = 0xFFFFFF;
+				}
+				bd <<= 1;
+			}
+			bmdata++;
+		}
+	}
+
+	tex = SDL_CreateTextureFromSurface(wk->rBackdrop, s);
+	SDL_FreeSurface(s);
+	SDL_RenderCopy(wk->rBackdrop, tex, NULL, &dr);
+	SDL_DestroyTexture(tex);
+}
+

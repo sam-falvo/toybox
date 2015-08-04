@@ -16,6 +16,6 @@ extern void workstation_text(Workstation *, int, int, char *);
 extern void workstation_char(Workstation *, int, int, char);
 extern void workstation_set_bg_pen(Workstation *, int, int, int);
 extern void workstation_refresh(Workstation *);
+extern void workstation_opaqueBitmap(Workstation *, int, int, int, int, char *);
 
 #endif
-
