@@ -3,6 +3,14 @@
 \ 
 \ SCODE structures are 4-byte entities, that consist of an 8-bit opcode, and
 \ a 24-bit parameter field.  The parameter field isn't always used.
+\ 
+\ By definition, SCODEs are intended to be as long as the longest
+\ target CPU instruction supported.  This makes translating from
+\ SCODEs into machine opcodes easier (trivial for RISC machines).
+\ They are fixed in size, making in-memory manipulation much easier.
+\ When compiling Forth to native machine language, SCODE sequences
+\ will need to be relocated in memory, both up and down, as
+\ different compiler passes perform their translations.
 
 : sx32
   \ sign-extend 32-bit value for 64-bit or higher systems.
@@ -20,7 +28,8 @@
 
 \ SCODEs are always written to memory in little-endian format.
 \ RISC-V is little-endian, as is x86.  This allows for an efficient way to
-\ store SCODEs on these platforms.
+\ store SCODEs on these platforms.  It also makes this code
+\ independent of the underlying architecture.
 
 : 8! ( value addr -- addr+1 )
   2dup c!  1+ swap 256 / swap ;
@@ -37,21 +46,17 @@
 : le32@ ( addr -- value )
   3 + 0 8@ 8@ 8@ 8@ nip ;
 
-
 \ Each S16X4 primitive has a corresponding SCODE.
 
 0 0 makeScode constant NopCode
 1 0 makeScode constant LitCode
-
 2 0 makeScode constant FwmCode
 3 0 makeScode constant SwmCode
 4 0 makeScode constant FbmCode
 5 0 makeScode constant SbmCode
-
 6 0 makeScode constant AddCode
 7 0 makeScode constant AndCode
 8 0 makeScode constant XorCode
-
 9 0 makeScode constant JeqCode
 10 0 makeScode constant JneCode
 11 0 makeScode constant CallCode
@@ -72,9 +77,10 @@
 20 0 makeScode constant PushCode
 21 0 makeScode constant PopCode
 22 1 makeScode constant RDropCode
-23 1 makeScode constant RFetchCode
+23 0 makeScode constant RFetchCode
 
-\ Miscellaneous
+\ Closer to the metal, these opcodes tend to map
+\ more closely to individual RISC-V instructions.
 
 24 0 makeScode constant LoadGPCode
 
