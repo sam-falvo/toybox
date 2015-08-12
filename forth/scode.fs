@@ -72,16 +72,27 @@
 
 \ First pass of compiling Forth code is to write SCODEs into a buffer.
 
-variable sbp
-create scodeBuffer    256 4 * allot
-variable labelsUsedSoFar
+256 constant #scodeBuffer               \ Number of words in the SCODE buffer.
+#scodeBuffer 4 * constant /scodeBuffer  \ Byte size of SCODE buffer.
+
+variable sbp                \ Points to next free word in scodeBuffer
+create scodeBuffer
+  /scodeBuffer allot
+variable labelsUsedSoFar    \ Number of labels consumed in the current definition.
+
 : scodeBuffer0
-  scodeBuffer 256 4 * $cc fill
+  scodeBuffer /scodeBuffer $cc fill
   scodeBuffer sbp ! 
   0 labelsUsedSoFar ! ;
 scodeBuffer0
 
-: getlab  14 labelsUsedSoFar @ makeScode 1 labelsUsedSoFar +! ;
+: getlab
+  \ Returns the next unused LabelCode.
+  14 labelsUsedSoFar @ makeScode 1 labelsUsedSoFar +! ;
+
+: scodeOffset
+  \ Returns the byte offset from the beginning of the current definition.
+  sbp @ scodeBuffer - ;
 
 : sb,     sbp @ le32!  4 sbp +! ;
 : nop,    NopCode sb, ;
@@ -94,8 +105,8 @@ scodeBuffer0
 : if,     getlab 9 over paramFromScode makeSCode sb, ;
 : then,   sb, ;
 : call,   11 swap makeScode sb, ;
-: proc      create sbp @ scodeBuffer - , does> @ call, ;
-: extern    32 word count type ."  at $" sbp @ scodeBuffer - s>d hex <# # # # # #> decimal type cr ;
+: proc      create scodeOffset , does> @ call, ;
+: extern    32 word count type ."  at $" scodeOffset s>d hex <# # # # # #> decimal type cr ;
 : :,      >IN @ extern >IN ! proc ;
 : ;,      RfsCode sb, ;
 : begin,  getlab dup sb, ;
@@ -125,14 +136,16 @@ scodeBuffer0
 
 \ PASS: Remove labels, create label table
 
-variable scp
-variable labelptr
+variable scp          \ pointer into the SCODE buffer
+variable labelptr     \ Points just beyond end of code, at start of label table.
 
 : collapse
-  scp @ dup 4 + swap over labelptr @ swap - .s cr move ;
+  \ Remove the SCODE pointed at by scp from the program.  This will shift all
+  \ subsequent SCODEs up one word.
+  scp @ dup 4 + swap over labelptr @ swap - move ;
 
 : removeLabel
-  \ Eat the LabelCode pseudo-instruction.
+  \ Eat a LabelCode pseudo-instruction.
   \ Move all subsequent code up, freeing up four bytes at the end.
   \ Point labelptr there, and store the label table entry there.
   \ 
