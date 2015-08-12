@@ -198,6 +198,8 @@ variable labelptr
   scodeBuffer
   begin dup labelptr @ < while ?fixup 4 + repeat drop ;
 
+\ The two previous passes are designed to go together.
+
 : fixupLabels
   removeLabels fixupBranches ;
 
