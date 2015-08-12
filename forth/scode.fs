@@ -83,6 +83,9 @@
 \ more closely to individual RISC-V instructions.
 
 24 0 makeScode constant LoadGPCode
+25 0 makeScode constant AdjRCode
+26 0 makeScode constant ____Code      \ Reserved.
+27 0 makeScode constant JmpXCode      \ like JmpCode, but address already computed
 
 \ First pass of compiling Forth code is to write SCODEs into a buffer.
 
@@ -156,7 +159,7 @@ scodeBuffer0
 
 \ Diagnostic disassembly of SCODEs.
 
-: opname  S" NOP   LIT   FWM   SWM   FBM   SBM   ADD   AND   XOR   JEQ   JNE   JSR   JMP   RFS   LABEL FWG   DUP   DROP  SWAP  ROT   PUSH  POP   RDRP  R     LDGP  " drop ;
+: opname  S" NOP   LIT   FWM   SWM   FBM   SBM   ADD   AND   XOR   JEQ   JNE   JSR   JMP   RFS   LABEL FWG   DUP   DROP  SWAP  ROT   PUSH  POP   RDRP  R     LDGP  ADJR  JSRX  JMPX  " drop ;
 : opc     255 and 6 * opname + 6 type ;
 : param   256 / . ;
 : h.      hex s>d <# # # # # # # # # #> type ."  " decimal ;
@@ -274,4 +277,32 @@ variable labelptr     \ Points just beyond end of code, at start of label table.
 
 : fixupLabels
   removeLabels fixupBranches ;
+
+\ It's a waste of effort to call a subroutine, only to return again.
+\ It's significantly more memory and runtime efficient to just branch
+\ unconditionally to the final subroutine instead.
+\ 
+\ This technique also enables self-recursion without any special keywords.
+\ For example:
+\ 
+\ :, delay ( n )   dup, if, -1 lit, add, delay ;, then, drop, ;,
+
+: collapse
+  pp @ 4 + dup 4 + swap over sbp @ swap - move ;
+
+: eliminateTailCalls
+  sp @ pp !
+  begin pp @ sbp @ < while
+    pp @ le32@ opcodeFromScode 11 = if
+      pp @ 4 + le32@ opcodeFromScode 13 = if
+        27 pp @ le32@ paramFromScode makeScode pp @ le32!
+        collapse  -4 sbp +!
+      then
+    then
+    4 pp +!
+  repeat ;
+
+\ All the passes in one go.
+: optimize
+  eliminateTailCalls loadGPpass fixupLabels ;
 
