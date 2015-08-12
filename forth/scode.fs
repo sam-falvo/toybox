@@ -31,6 +31,9 @@
 : le32! ( value addr -- )
   8! 8! 8! 8! 2drop ;
 
+: le64! ( value addr -- )
+  8! 8! 8! 8! le32! ;
+
 : le32@ ( addr -- value )
   3 + 0 8@ 8@ 8@ 8@ nip ;
 
@@ -58,6 +61,7 @@
 \ Labels to support multi-pass compilation
 
 14 0 makeScode constant LabelCode
+15 0 makeScode constant FwgCode		\ fetch word relative to globals
 
 \ Some additional operations not supported natively by the S16X4.
 
@@ -70,24 +74,43 @@
 22 1 makeScode constant RDropCode
 23 1 makeScode constant RFetchCode
 
+\ Miscellaneous
+
+24 0 makeScode constant LoadGPCode
+
 \ First pass of compiling Forth code is to write SCODEs into a buffer.
 
 variable sbp
 create scodeBuffer    256 4 * allot
 variable labelsUsedSoFar
+variable sp		\ slot pointer
+variable pp		\ pass pointer
 : scodeBuffer0
   scodeBuffer 256 4 * $cc fill
-  scodeBuffer sbp ! 
+  scodeBuffer sbp !  scodeBuffer sp !
   0 labelsUsedSoFar ! ;
 scodeBuffer0
+
+: reserve ( x -- i )
+  \ Reserve a dword slot at the beginning of the buffer.
+  \ Initialize the slot.  Then, return an offset for the
+  \ slot.
+  sp @ dup 8 + sbp @ sp @ - move
+  sp @ le64!
+  sp @ scodeBuffer -
+  8 sp +!  8 sbp +!  8 pp +! ;
 
 : getlab  14 labelsUsedSoFar @ makeScode 1 labelsUsedSoFar +! ;
 
 : sb,     sbp @ le32!  4 sbp +! ;
 : nop,    NopCode sb, ;
-: lit,    1 swap makeScode sb, ;
+: small     dup -2048 2048 within ;
+: biglit,   reserve 15 swap makeSCode sb, ;
+: lit,    small if 1 swap makeScode sb, exit then biglit, ;
 : fwm,    FwmCode sb, ;
 : swm,    SwmCode sb, ;
+: fbm,    FbmCode sb, ;
+: sbm,    SbmCode sb, ;
 : add,    AddCode sb, ;
 : and,    AndCode sb, ;
 : xor,    XorCode sb, ;
@@ -116,11 +139,41 @@ scodeBuffer0
 
 \ Diagnostic disassembly of SCODEs.
 
-: opname  S" NOP   LIT   FWM   SWM   FBM   SBM   ADD   AND   XOR   JEQ   JNE   JSR   JMP   RFS   LABEL ????  DUP   DROP  SWAP  ROT   PUSH  POP   RDRP  R    " drop ;
+: opname  S" NOP   LIT   FWM   SWM   FBM   SBM   ADD   AND   XOR   JEQ   JNE   JSR   JMP   RFS   LABEL FWG   DUP   DROP  SWAP  ROT   PUSH  POP   RDRP  R     LDGP  " drop ;
 : opc     255 and 6 * opname + 6 type ;
 : param   256 / . ;
-: insn    dup scodeBuffer - s>d <# # # # # # #> type ."  " le32@ dup opc param cr ;
+: h.      hex s>d <# # # # # # # # # #> type ."  " decimal ;
+: insn    dup scodeBuffer - s>d <# # # # # # #> type ."  " le32@ dup h. dup opc param cr ;
 : dis     cr scodeBuffer begin dup sbp @ < while dup insn 4 + repeat drop ;
+
+
+\ During compilation, we distinguish between literals
+\ that fit in an ADDI instruction, and those that do not.
+\ For those that require fetching from RAM, we use the
+\ FWG instruction.  This instruction, however, requires
+\ that we establish the value of our global pointer (GP)
+\ register.  Thus, we must establish the GP register
+\ before the first use of FWG, both from the beginning
+\ of the compiled code, and since a subroutine might
+\ alter the GP register for its own use, after any
+\ CallCode instructions as well.
+
+variable gpvalid
+
+: loadGPpass
+  sp @ pp !
+  gpvalid off
+  begin pp @ sbp @ < while
+    pp @ le32@ opcodeFromScode 15 = gpvalid @ 0= and if
+      pp @ dup 4 + sbp @ pp @ - move
+      LoadGPCode pp @ le32!
+      4 pp +!  4 sbp +!
+      gpvalid on
+    else pp @ le32@ opcodeFromScode 11 = if
+      gpvalid off
+    then then
+    4 pp +!
+  repeat ;
 
 
 \ PASS: Remove labels, create label table
