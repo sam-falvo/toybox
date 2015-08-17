@@ -9,6 +9,9 @@
 #define TOKEN_END		999
 #define TOKEN_NUM		1000
 #define TOKEN_COMMA		1001
+#define TOKEN_COLON		1002
+#define TOKEN_EQ		1003
+#define TOKEN_DEF		1004
 
 SCANNER {
 	SCANNERSRC *src;	/*Input source stack*/
@@ -142,6 +145,21 @@ scanner_next(SCANNER *s) {
 	if(isdigit(src->buffer[src->pos])) return scanner_number(s);
 	if(src->buffer[src->pos] == ',') {
 		s->tok = TOKEN_COMMA;
+		src->pos++;
+		return 1;
+	}
+	if(src->buffer[src->pos] == ':') {
+		s->tok = TOKEN_COLON;
+		src->pos++;
+		if(src->buffer[src->pos] == '=') {
+			s->tok = TOKEN_DEF;
+			src->pos++;
+		}
+		return 1;
+	}
+	if(src->buffer[src->pos] == '=') {
+		s->tok = TOKEN_EQ;
+		src->pos++;
 		return 1;
 	}
 	return 0;
@@ -274,23 +292,30 @@ fail:
 	return r;
 }
 
+#define quantityof(x)	(int)((sizeof(x)/sizeof(x[0])))
+
 int
 test_scanner_punct(void) {
 	SCANNER *s;
 	int r;
+	int outputs[] = {TOKEN_COMMA, TOKEN_COLON, TOKEN_EQ, TOKEN_DEF};
+	int i;
 
-	r = setup_test_scanner(",", &s);
+	r = setup_test_scanner(", : = :=", &s);
 	if(!r) goto fail;
 
-	r = scanner_token(s);
-	if(r != TOKEN_COMMA) {
-		r = 0; goto fail;
+	for(i = 0; i < quantityof(outputs); i++) {
+		r = scanner_token(s);
+		if(r != outputs[i]) {
+			printf("Checking for %d; got %d\n", outputs[i], r);
+			r = 0; goto fail;
+		}
+		r = scanner_next(s);
+		if(!r) goto fail;
 	}
+	r = 1;
 
-	return 1;
-
-fail:
-	if(s) scanner_dispose(s);
+fail:	if(s) scanner_dispose(s);
 	return r;
 }
 
