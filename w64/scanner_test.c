@@ -163,15 +163,16 @@ scanner_nValue(SCANNER *s) {
 	return s->nval;
 }
 
-int
-test_scanner(void) {
+static int
+setup_test_scanner_numbers(char *str, SCANNER **ps) {
 	SCANNER *s;
 	int r;
 
+	*ps = 0;
 	s = scanner_new();
 	if(!s) return 0;
 
-	r = scanner_pushString(s, "12345");
+	r = scanner_pushString(s, str);
 	if(!r) goto fail;
 
 	r = scanner_token(s);
@@ -185,6 +186,21 @@ test_scanner(void) {
 	}
 
 	r = scanner_next(s);
+	if(!r) goto fail;
+
+	*ps = s;
+	return 1;
+
+fail:	if(s) scanner_dispose(s);
+	return 0;
+}
+
+int
+test_scanner(void) {
+	SCANNER *s;
+	int r;
+
+	r = setup_test_scanner_numbers("12345", &s);
 	if(!r) goto fail;
 
 	r = scanner_token(s);
@@ -202,23 +218,7 @@ test_scanner_numbers(void) {
 	SCANNER *s;
 	int r;
 
-	s = scanner_new();
-	if(!s) return 0;
-
-	r = scanner_pushString(s, "12345 0x12345");
-	if(!r) goto fail;
-
-	r = scanner_token(s);
-	if(r != TOKEN_NUM) {
-		r = 0; goto fail;
-	}
-
-	r = scanner_nValue(s);
-	if(r != 12345) {
-		r = 0; goto fail;
-	}
-
-	r = scanner_next(s);
+	r = setup_test_scanner_numbers("\t12345 0x12345", &s);
 	if(!r) goto fail;
 
 	r = scanner_token(s);
@@ -231,8 +231,8 @@ test_scanner_numbers(void) {
 		r = 0; goto fail;
 	}
 
-  r = scanner_next(s);
-  if(!r) goto fail;
+	r = scanner_next(s);
+	if(!r) goto fail;
 
 	r = scanner_token(s);
 	if(r != TOKEN_END) {
@@ -244,17 +244,29 @@ fail:
 	return r;
 }
 
+#define TESTDESC struct TestDesc
+TESTDESC {
+	char *name;
+	int (*fn)(void);
+};
+
 int
 main(int argc, char *argv[]) {
 	int r;
+	static TESTDESC tds[] = {
+		{"test_scanner", test_scanner},
+		{"test_scanner_numbers", test_scanner_numbers},
+		{NULL, NULL},
+	};
+	TESTDESC *td;
 
-	r = test_scanner();
-	if(r) printf("Y test_scanner\n");
-	else printf("N test_scanner\n");
-
-	r = test_scanner_numbers();
-	if(r) printf("Y test_scanner_numbers\n");
-	else printf("N test_scanner_numbers\n");
-
+	td = &tds[0];
+	while(1) {
+		if(td->name == NULL) break;
+		r = td->fn();
+		if(r) printf("Y %s\n", td->name);
+		else printf("N %s\n", td->name);
+		td++;
+	}
 }
 
