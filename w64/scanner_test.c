@@ -12,11 +12,15 @@
 #define TOKEN_COLON		1002
 #define TOKEN_EQ		1003
 #define TOKEN_DEF		1004
+#define TOKEN_IDENT		1005
+
+#define MAX_NAME		64
 
 SCANNER {
 	SCANNERSRC *src;	/*Input source stack*/
 	int tok;		/*Current input token*/
 	int nval;		/*For numeric tokens, their value*/
+	char name[MAX_NAME];	/*Identifier name*/
 };
 
 SCANNERSRC {
@@ -65,6 +69,16 @@ nybble(char c) {
 static int
 ishex(char c) {
 	return isdigit(c) || (('A' <= c) && (c <= 'F')) || (('a' <= c) && (c <= 'f'));
+}
+
+static int
+isident0(char c) {
+	return isalpha(c) || (c == '_');
+}
+
+static int
+isident(char c) {
+	return isdigit(c) || isident0(c);
 }
 
 int
@@ -116,6 +130,28 @@ scanner_number(SCANNER *s) {
 	return 1;
 }
 
+int
+scanner_ident(SCANNER *s) {
+	SCANNERSRC *src = s->src;
+	int i = 0;
+	char c;
+
+	memset(s->name, 0, MAX_NAME);
+	s->tok = TOKEN_IDENT;
+
+	while(1) {
+		if(src->pos >= src->length) break;
+		c = src->buffer[src->pos];
+		if(!isident(c)) break;
+		if(i < (MAX_NAME-1)) {
+			s->name[i] = c;
+			i++;
+		}
+		src->pos++;
+	}
+	return 1;
+}
+
 void
 scanner_skipws(SCANNER *s) {
 	SCANNERSRC *src = s->src;
@@ -143,6 +179,8 @@ scanner_next(SCANNER *s) {
 	}
 
 	if(isdigit(src->buffer[src->pos])) return scanner_number(s);
+	if(isident0(src->buffer[src->pos])) return scanner_ident(s);
+
 	if(src->buffer[src->pos] == ',') {
 		s->tok = TOKEN_COMMA;
 		src->pos++;
@@ -196,6 +234,11 @@ scanner_token(SCANNER *s) {
 int
 scanner_nValue(SCANNER *s) {
 	return s->nval;
+}
+
+char *
+scanner_name(SCANNER *s) {
+	return s->name;
 }
 
 static int
@@ -319,6 +362,37 @@ fail:	if(s) scanner_dispose(s);
 	return r;
 }
 
+int
+test_scanner_ident(void) {
+	SCANNER *s;
+	int r, i;
+	char *outputs[] = {"foo", "b4r", "_baz"};
+
+	r = setup_test_scanner("foo b4r _baz", &s);
+	if(!r) goto fail;
+
+	for(i = 0; i < quantityof(outputs); i++) {
+		r = scanner_token(s);
+		if(r != TOKEN_IDENT) {
+			printf("Expected TOKEN_IDENT; got %d\n", r);
+			goto fail;
+		}
+
+		r = strcmp(scanner_name(s), outputs[i]);
+		if(r != 0) {
+			printf("Checking for \"%s\"; got \"%s\" (%d).\n", outputs[i], scanner_name(s), r);
+			r = 0; goto fail;
+		}
+
+		r = scanner_next(s);
+		if(!r) goto fail;
+	}
+	r = 1;
+
+fail:	if(s) scanner_dispose(s);
+	return r;
+}
+
 #define TESTDESC struct TestDesc
 TESTDESC {
 	char *name;
@@ -332,6 +406,7 @@ main(int argc, char *argv[]) {
 		{"test_scanner", test_scanner},
 		{"test_scanner_numbers", test_scanner_numbers},
 		{"test_scanner_punct", test_scanner_punct},
+		{"test_scanner_ident", test_scanner_ident},
 		{NULL, NULL},
 	};
 	TESTDESC *td;
