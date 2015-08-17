@@ -35,21 +35,30 @@ SCANNER *scanner_new(void) {
 
 void
 scanner_dispose(SCANNER *s) {
+	SCANNERSRC *src;
+
 	if(s) {
+		while(1) {
+			if(!s->src) break;
+			src = s->src;
+			s->src = src->next;
+			free(src);
+		}
 		free(s);
 	}
 }
 
 int
 scanner_number(SCANNER *s) {
-	s->nval = (s->src->buffer[s->src->pos])-'0';
-	s->src->pos++;
+	SCANNERSRC *src = s->src;
+	s->nval = (src->buffer[src->pos])-'0';
+	src->pos++;
 	while(1) {
-		if(s->src->pos >= s->src->length) break;
-		if(!isdigit(s->src->buffer[s->src->pos])) break;
+		if(src->pos >= src->length) break;
+		if(!isdigit(src->buffer[src->pos])) break;
 		s->nval *= 10;
-		s->nval += (s->src->buffer[s->src->pos])-'0';
-		s->src->pos++;
+		s->nval += (src->buffer[src->pos])-'0';
+		src->pos++;
 	}
 	s->tok = TOKEN_NAT;
 	return 1;
