@@ -8,6 +8,7 @@
 
 #define TOKEN_END		999
 #define TOKEN_NUM		1000
+#define TOKEN_COMMA		1001
 
 SCANNER {
 	SCANNERSRC *src;	/*Input source stack*/
@@ -78,16 +79,26 @@ scanner_hex(SCANNER *s) {
 }
 
 int
+scanner_try_hex(SCANNER *s) {
+	SCANNERSRC *src = s->src;
+	char c;
+
+	/*We need at least two chars for the 0x prefix.*/
+	if(src->pos >= (src->length - 2)) return 0;
+
+	c = src->buffer[src->pos+1];
+	if(src->buffer[src->pos] != '0') return 0;
+	if((c != 'x') && (c != 'X')) return 0;
+
+	src->pos += 2;
+	return scanner_hex(s);
+}
+
+int
 scanner_number(SCANNER *s) {
 	SCANNERSRC *src = s->src;
-	if(src->pos <= (src->length-2)) {
-		if(src->buffer[src->pos] == '0') {
-			if(src->buffer[src->pos+1] == 'x') {
-				src->pos = src->pos+2;
-				return scanner_hex(s);
-			}
-		}
-	}
+
+	if(scanner_try_hex(s)) return 1;
 
 	s->nval = (src->buffer[src->pos])-'0';
 	src->pos++;
@@ -114,19 +125,25 @@ scanner_skipws(SCANNER *s) {
 
 int
 scanner_next(SCANNER *s) {
-	if(!s->src) {
+	SCANNERSRC *src = s->src;
+
+	if(!src) {
 		s->tok = TOKEN_END;
 		return 1;
 	}
 
 	scanner_skipws(s);
 
-	if(s->src->pos >= s->src->length) {
+	if(src->pos >= src->length) {
 		s->tok = TOKEN_END;
 		return 1;
 	}
 
-	if(isdigit(s->src->buffer[s->src->pos])) return scanner_number(s);
+	if(isdigit(src->buffer[src->pos])) return scanner_number(s);
+	if(src->buffer[src->pos] == ',') {
+		s->tok = TOKEN_COMMA;
+		return 1;
+	}
 	return 0;
 }
 
@@ -164,7 +181,7 @@ scanner_nValue(SCANNER *s) {
 }
 
 static int
-setup_test_scanner_numbers(char *str, SCANNER **ps) {
+setup_test_scanner(char *str, SCANNER **ps) {
 	SCANNER *s;
 	int r;
 
@@ -175,23 +192,36 @@ setup_test_scanner_numbers(char *str, SCANNER **ps) {
 	r = scanner_pushString(s, str);
 	if(!r) goto fail;
 
-	r = scanner_token(s);
-	if(r != TOKEN_NUM) {
-		r = 0; goto fail;
-	}
-
-	r = scanner_nValue(s);
-	if(r != 12345) {
-		r = 0; goto fail;
-	}
-
-	r = scanner_next(s);
-	if(!r) goto fail;
-
 	*ps = s;
 	return 1;
 
 fail:	if(s) scanner_dispose(s);
+	return 0;
+}
+
+static int
+setup_test_scanner_numbers(char *str, SCANNER **ps) {
+	int r;
+
+	r = setup_test_scanner(str, ps);
+	if(!r) goto fail;
+
+	r = scanner_token(*ps);
+	if(r != TOKEN_NUM) {
+		r = 0; goto fail;
+	}
+
+	r = scanner_nValue(*ps);
+	if(r != 12345) {
+		r = 0; goto fail;
+	}
+
+	r = scanner_next(*ps);
+	if(!r) goto fail;
+
+	return 1;
+
+fail:	if(*ps) scanner_dispose(*ps);
 	return 0;
 }
 
@@ -244,6 +274,26 @@ fail:
 	return r;
 }
 
+int
+test_scanner_punct(void) {
+	SCANNER *s;
+	int r;
+
+	r = setup_test_scanner(",", &s);
+	if(!r) goto fail;
+
+	r = scanner_token(s);
+	if(r != TOKEN_COMMA) {
+		r = 0; goto fail;
+	}
+
+	return 1;
+
+fail:
+	if(s) scanner_dispose(s);
+	return r;
+}
+
 #define TESTDESC struct TestDesc
 TESTDESC {
 	char *name;
@@ -256,6 +306,7 @@ main(int argc, char *argv[]) {
 	static TESTDESC tds[] = {
 		{"test_scanner", test_scanner},
 		{"test_scanner_numbers", test_scanner_numbers},
+		{"test_scanner_punct", test_scanner_punct},
 		{NULL, NULL},
 	};
 	TESTDESC *td;
