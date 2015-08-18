@@ -1,3 +1,6 @@
+/* Break input text into discrete tokens and classify them.
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -8,6 +11,7 @@
 
 SCANNER *
 scanner_new(void) {
+	/* Create a new scanner. */
 	SCANNER *s;
 
 	s = malloc(sizeof(SCANNER));
@@ -19,6 +23,9 @@ scanner_new(void) {
 
 void
 scanner_dispose(SCANNER *s) {
+	/* Dispose of an existing scanner.  If input sources exist, dispose of
+	 * those as well.
+	 */
 	SCANNERSRC *src;
 
 	if(s) {
@@ -34,6 +41,7 @@ scanner_dispose(SCANNER *s) {
 
 static int
 nybble(char c) {
+	/* Converts a hexadecimal character into its binary representation. */
 	int n;
 
 	if(('a' <= c) && (c <= 'z')) c ^= 0x20;
@@ -44,23 +52,33 @@ nybble(char c) {
 
 static int
 ishex(char c) {
+	/* True if the character is a valid hex digit. */
 	return isdigit(c) || (('A' <= c) && (c <= 'F')) || (('a' <= c) && (c <= 'f'));
 }
 
 static int
 isident0(char c) {
+	/* True if character can start an identifier. */
 	return isalpha(c) || (c == '_');
 }
 
 static int
 isident(char c) {
+	/* True if character is a valid identifier character.  Note that not
+	 * all valid identifier characters can go at the beginning of an
+	 * identifier; use isident0() to check for that.
+	 */
 	return isdigit(c) || isident0(c);
 }
 
 int
 scanner_hex(SCANNER *s) {
+	/* Scan the input stream for a valid hexadecimal value.  The 0x prefix
+	 * is assumed to have already been consumed.
+	 */
 	SCANNERSRC *src = s->src;
 	s->nval = 0;
+	s->tok = TOKEN_NUM;
 	while(1) {
 		if(src->pos >= src->length) break;
 		if(!ishex(src->buffer[src->pos])) break;
@@ -73,6 +91,9 @@ scanner_hex(SCANNER *s) {
 
 int
 scanner_try_hex(SCANNER *s) {
+	/* If the next input token is a well-formed hexadecimal literal, then
+	 * convert it and return a TOKEN_NUM token.  Otherwise, do nothing.
+	 */
 	SCANNERSRC *src = s->src;
 	char c;
 
@@ -89,6 +110,7 @@ scanner_try_hex(SCANNER *s) {
 
 int
 scanner_number(SCANNER *s) {
+	/* Convert the next input token into a number, and return TOKEN_NUM. */
 	SCANNERSRC *src = s->src;
 
 	if(scanner_try_hex(s)) return 1;
@@ -108,6 +130,7 @@ scanner_number(SCANNER *s) {
 
 int
 scanner_ident(SCANNER *s) {
+	/* Return TOKEN_IDENT and retrieve the name of the next input token. */
 	SCANNERSRC *src = s->src;
 	int i = 0;
 	char c;
@@ -130,6 +153,7 @@ scanner_ident(SCANNER *s) {
 
 void
 scanner_skipws(SCANNER *s) {
+	/* Skip any whitespace that may be in the input stream. */
 	SCANNERSRC *src = s->src;
 	while(1) {
 		if(src->pos >= src->length) break;
@@ -140,6 +164,11 @@ scanner_skipws(SCANNER *s) {
 
 int
 scanner_next(SCANNER *s) {
+	/* Grab the next token from the input stream, and classify it.
+	 * For numeric tokens, use scanner_nValue() to retrieve the value.
+	 * For identifiers, use scanner_name() to recover the name.
+	 * Etc.
+	 */
 	SCANNERSRC *src = s->src;
 
 	if(!src) {
@@ -181,6 +210,9 @@ scanner_next(SCANNER *s) {
 
 int
 scanner_pushString(SCANNER *s, char *buffer) {
+	/* Push the given string onto an input stack, making it the current
+	 * input source.
+	 */
 	SCANNERSRC *src = malloc(sizeof(SCANNERSRC));
 	if(src) {
 		memset(src, 0, sizeof(SCANNERSRC));
@@ -204,15 +236,20 @@ scanner_pushString(SCANNER *s, char *buffer) {
 
 int
 scanner_token(SCANNER *s) {
+	/* Return the most recently classified token type. */
 	return s->tok;
 }
 
 int
 scanner_nValue(SCANNER *s) {
+	/* Return the numeric value associated with the most recently processed
+	 * numeric token.
+	 */
 	return s->nval;
 }
 
 char *
 scanner_name(SCANNER *s) {
+	/* Return the name of the most recently processed identifier token. */
 	return s->name;
 }

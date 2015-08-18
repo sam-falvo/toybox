@@ -51,6 +51,7 @@ fail:	if(*ps) scanner_dispose(*ps);
 
 int
 test_scanner(void) {
+	/* Scanners should be easy to create, at least for strings. */
 	SCANNER *s;
 	int r;
 
@@ -69,6 +70,7 @@ fail:
 
 int
 test_scanner_numbers(void) {
+	/* Scanners should support decimal and hexadecimal values. */
 	SCANNER *s;
 	int r;
 
@@ -102,6 +104,7 @@ fail:
 
 int
 test_scanner_punct(void) {
+	/* Scanners should recognize certain punctuation. */
 	SCANNER *s;
 	int r;
 	int outputs[] = {TOKEN_COMMA, TOKEN_COLON, TOKEN_EQ, TOKEN_DEF};
@@ -125,8 +128,11 @@ fail:	if(s) scanner_dispose(s);
 	return r;
 }
 
-int
-test_scanner_ident(void) {
+int test_scanner_ident(void) {
+	/* Scanners should recognize identifiers.  Without access to a symbol
+	 * table, I don't expect the scanner to know what kind of identifier
+	 * it is.
+	 */
 	SCANNER *s;
 	int r, i;
 	char *outputs[] = {"foo", "b4r", "_baz"};
