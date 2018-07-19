@@ -337,7 +337,7 @@ workstation_opaqueBitmap(Workstation *wk, int l, int t, int w, int h, char *bmda
 	if(!s) return;
 
 	for(y = 0; y < h; y++) {
-		q = &s->pixels[y * s->pitch];
+		q = &((unsigned int*)(s->pixels))[y * s->pitch];
 		for(x = 0; x < w; x += 8) {
 			bd = *bmdata;
 			for(i = 0; i < 8; i++) {
