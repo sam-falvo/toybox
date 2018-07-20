@@ -170,6 +170,7 @@ v_hline(uint16_t fg_pat, uint16_t bg_pat, int l, int r, int y) {
 	if((y < 0) || (y >= backdrop_height)) return;
 	if((l < 0) || (l >= backdrop_width)) return;
 	if((r <= 0) || (r > backdrop_width)) return;
+	if(l >= r) return;
 
 	bits = v_getscanline(y);
 	pat_bit = (uint16_t)(1 << (l & 15));
@@ -189,7 +190,34 @@ v_hline(uint16_t fg_pat, uint16_t bg_pat, int l, int r, int y) {
 
 void
 v_vline(uint16_t fg_pat, uint16_t bg_pat, int x, int t, int b) {
-	// ...
+	int i;
+	uint32_t *bits;
+	uint16_t pat_bit;
+
+	if((x < 0) || (x >= backdrop_width)) return;
+	if((t < 0) || (t >= backdrop_height)) return;
+	if((b <= 0) || (b > backdrop_height)) return;
+	if(t >= b) return;
+
+	assert((0 <= x) && (x < backdrop_width));
+	assert((0 <= t) && (t < backdrop_height));
+	assert((0 < b) && (b <= backdrop_height));
+	assert(t < b);
+
+	bits = backdrop_bits + x;
+	pat_bit = (uint16_t)(1 << (t & 15));
+	for(i = t; i < b; i++) {
+		if(fg_pat & pat_bit) {
+			*bits = fg_pen;
+		}
+		else if(bg_pat & pat_bit) {
+			*bits = bg_pen;
+		}
+		// Else, do nothing; leave background intact.
+
+		pat_bit = (pat_bit << 1) | ((pat_bit & 0x8000) >> 15);
+		bits += backdrop_width;
+	}
 }
 
 
@@ -219,10 +247,10 @@ main(int argc, char *argv[]) {
 	}
 
 	r = g = b = 0;
-	for(int i = 0; i < v_getheight(); i++) {
+	for(int i = 0; i < v_getwidth(); i++) {
 		v_setfgpen(r, g, b);
 		v_setbgpen(255^r, 255^g, 255^b);
-		v_hline(0xFF, 0x5500, 0, v_getwidth(), i);
+		v_vline(0xFFFF, 0x0000, i, 0, v_getheight());
 		r = r + 1;
 		g = g + 2;
 		b = b + 4;
