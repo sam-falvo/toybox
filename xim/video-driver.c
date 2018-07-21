@@ -5,10 +5,21 @@
 #include <unistd.h>
 
 
+#define SWAP(T, a, b) {		\
+	T tmp = (a);		\
+	(a) = (b);		\
+	(b) = tmp;		\
+}
+
+
 #define ERC_VIDEO_DRIVER_FAILED		0x0101
 #define ERC_VIDEO_WINDOW		0x0102
 #define ERC_VIDEO_RENDERER		0x0103
 #define ERC_VIDEO_BACKDROP_BUFFER	0x0104
+
+
+#define DRAW_FG		1
+#define DRAW_BG		2
 
 
 static SDL_Window *backdrop_window;
@@ -31,6 +42,8 @@ void v_hline(uint16_t fg_pat, uint16_t bg_pat, int l, int r, int y);
 void v_setbgpen(uint8_t r, uint8_t g, uint8_t b);
 void v_setfgpen(uint8_t r, uint8_t g, uint8_t b);
 void v_vline(uint16_t fg_pat, uint16_t bg_pat, int x, int t, int b);
+void v_rect(uint16_t *pat, int patymask, int drawmode, int l, int t, int r, int b);
+void v_swappens();
 
 
 /****** Initialization and Expunge ******/
@@ -252,25 +265,56 @@ v_frame(uint16_t fg_pat, uint16_t bg_pat, int l, int t, int r, int b) {
 
 
 void
+v_rect(uint16_t *pat, int patymask, int drawmode, int l, int t, int r, int b) {
+	int i;
+	uint16_t fg_pat_mask = 0, bg_pat_mask = 0, p;
+
+	if(l >= r) return;
+	if(t >= b) return;
+
+	if(drawmode & DRAW_FG) fg_pat_mask = 0xFFFF;
+	if(drawmode & DRAW_BG) bg_pat_mask = 0xFFFF;
+
+	for(i = t; i < b; i++) {
+		p = pat[i & patymask];
+
+		v_hline(
+			p & fg_pat_mask, (~p) & bg_pat_mask,
+			l, r, i
+		);
+	}
+}
+
+
+void
 v_setfgpen(uint8_t r, uint8_t g, uint8_t b) {
 	fg_r = r; fg_g = g; fg_b = b;
-	fg_pen = (r << 16) | (g << 8) | b;
+	fg_pen = (fg_r << 16) | (fg_g << 8) | fg_b;
 }
 
 
 void
 v_setbgpen(uint8_t r, uint8_t g, uint8_t b) {
 	bg_r = r; bg_g = g; bg_b = b;
-	bg_pen = (r << 16) | (g << 8) | b;
+	bg_pen = (bg_r << 16) | (bg_g << 8) | bg_b;
+}
+
+
+void
+v_swappens() {
+	SWAP(uint8_t, fg_r, bg_r);
+	SWAP(uint8_t, fg_g, bg_g);
+	SWAP(uint8_t, fg_b, bg_b);
+	fg_pen = (fg_r << 16) | (fg_g << 8) | fg_b;
+	bg_pen = (bg_r << 16) | (bg_g << 8) | bg_b;
 }
 
 
 int
 main(int argc, char *argv[]) {
 	int erc;
-	uint8_t r, g, b;
-	uint16_t fg_patterns[8] = { 0x1111, 0x4444, 0x5555, 0xFFFF, 0xFFFF, 0xAAAA, 0x2222, 0x8888 };
-	int w;
+	uint16_t desktop_pattern[2] = {0xAAAA, 0x5555};
+	uint16_t solid_pattern[1] = {0xFFFF};
 
 	erc = v_init();
 	if(erc) {
@@ -278,51 +322,16 @@ main(int argc, char *argv[]) {
 		exit(1);
 	}
 
-	w = v_getwidth() / 2;
-	r = g = b = 0;
-	for(int i = 0; i < w; i++) {
-		v_setfgpen(r, g, b);
-		v_setbgpen(255^r, 255^g, 255^b);
-		v_frame(
-			fg_patterns[i & 7], ~fg_patterns[i & 7],
-			i, i, v_getwidth() - i, v_getheight() - i
-		);
-		r = r + 1;
-		g = g + 2;
-		b = b + 4;
-	}
-	v_endpaint(0, v_getheight());
+	v_setfgpen(0,0,0);
+	v_setbgpen(255,255,255);
+	v_rect(desktop_pattern, 1, DRAW_FG | DRAW_BG, 0, 0, v_getwidth(), v_getheight());
 
-	sleep(5);
+	v_rect(solid_pattern, 0, DRAW_FG, 16, 16, v_getwidth()-8, v_getheight()-8);
+	v_swappens();
+	v_rect(solid_pattern, 0, DRAW_FG, 8, 8, v_getwidth()-16, v_getheight()-16);
+	v_swappens();
+	v_frame(-1, 0, 8, 8, v_getwidth()-16, v_getheight()-16);
 
-	r = g = b = 0;
-	for(int i = 0; i < v_getwidth(); i++) {
-		v_setfgpen(r, g, b);
-		v_setbgpen(255^r, 255^g, 255^b);
-		v_vline(
-			fg_patterns[i & 7], ~fg_patterns[i & 7],
-			i, 0, v_getheight()
-		);
-		r = r + 1;
-		g = g + 2;
-		b = b + 4;
-	}
-	v_endpaint(0, v_getheight());
-
-	sleep(5);
-
-	r = g = b = 0;
-	for(int i = 0; i < v_getheight(); i++) {
-		v_setfgpen(r, g, b);
-		v_setbgpen(255^r, 255^g, 255^b);
-		v_hline(
-			fg_patterns[i & 7], ~fg_patterns[i & 7],
-			0, v_getwidth(), i
-		);
-		r = r + 1;
-		g = g + 2;
-		b = b + 4;
-	}
 	v_endpaint(0, v_getheight());
 
 	sleep(5);
